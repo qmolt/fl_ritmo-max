@@ -239,66 +239,47 @@ void fl_ritmo_perform64(t_fl_ritmo *x, t_object *dsp64, double **inputs, long nu
 	long n = vectorsize;
 	double fs = x->fs;
 
-	fl_beat *pold_unos = x->old_unos;
-	fl_beat *pnew_unos = x->new_unos;
+	fl_beat *p_unos = x->old_unos;
 
 	short onoff = x->onoff;
 	short loop = x->loop;
 	long samp_count = x->samp_count;
 	long samp_note = 0;
 
-	long index_old_unos = x->index_old_unos;
-	long index_new_unos = x->index_new_unos;
-	long total_old_unos = x->total_old_unos;
-	long total_new_unos = x->total_new_unos;
+	long index_unos = x->index_old_unos;
+	long total_unos = x->total_old_unos;
 
 	short dirty = x->new_list_available;
 
 	long beat_samps = (long)(x->beat_ms * fs * 0.001);
-	long new_bar_samps = (long)(x->new_cifra * (float)beat_samps);
-	long old_bar_samps = (long)(x->old_cifra * (float)beat_samps);
+	long bar_samps = (long)(x->old_cifra * (float)beat_samps);
+
+	if(dirty){
+		p_unos = x->new_unos;
+		index_unos = x->index_new_unos;
+		total_unos = x->total_new_unos;
+		bar_samps = (long)(x->new_cifra * (float)beat_samps);
+	}
 
 	while (n--){
 		
 		if(onoff){
-			if (dirty) {
-				if (index_new_unos < total_new_unos) {
-					samp_note = (long)(pnew_unos[index_new_unos].inicio_beat * (float)beat_samps);
-					if (samp_count > samp_note) {
-						x->isnewlist = 1;
-						x->index_out = index_new_unos;
-						clock_delay(x->m_clock, 0);
-						index_new_unos++;
-					}
-				}
-				else {
-					if (samp_count > new_bar_samps) {
-						if (!loop) { onoff = 0; }
-						samp_count = 0;
-						index_new_unos = 0;
-						index_old_unos = 0;
-						clock_delay(x->m_clock2, 0);
-					}
+			if (index_unos < total_unos) {
+				samp_note = (long)(p_unos[index_unos].inicio_beat * (float)beat_samps);
+				if (samp_count > samp_note) {
+					x->isnewlist = 1;
+					x->index_out = index_unos;
+					clock_delay(x->m_clock, 0);
+					index_unos++;
 				}
 			}
 			else {
-				if (index_old_unos < total_old_unos) {
-					samp_note = (long)(pold_unos[index_old_unos].inicio_beat * (float)beat_samps);
-					if (samp_count > samp_note) {
-						x->isnewlist = 0;
-						x->index_out = index_old_unos;
-						clock_delay(x->m_clock, 0);
-						index_old_unos++;
-					}
-				}
-				else {
-					if (samp_count > old_bar_samps) {
-						if (!loop) { onoff = 0; }
-						samp_count = 0;
-						index_new_unos = 0;
-						index_old_unos = 0;
-						clock_delay(x->m_clock2, 0);
-					}
+				if (samp_count > bar_samps) {
+					if (!loop) { onoff = 0; }
+					samp_count = 0;
+					index_unos = 0;
+					index_unos = 0;
+					clock_delay(x->m_clock2, 0);
 				}
 			}
 			samp_count++;
@@ -306,7 +287,7 @@ void fl_ritmo_perform64(t_fl_ritmo *x, t_object *dsp64, double **inputs, long nu
 	}
 
 	x->onoff = onoff;
-	x->index_new_unos = index_new_unos;
-	x->index_old_unos = index_old_unos;
+	x->index_new_unos = index_unos;
+	x->index_old_unos = index_unos;
 	x->samp_count = samp_count;
 }
