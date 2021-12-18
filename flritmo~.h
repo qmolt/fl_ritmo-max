@@ -20,8 +20,8 @@ typedef struct _fl_ritmo {
 	fl_beat *new_unos;
 	long total_old_unos;
 	long total_new_unos;
-	long total_old_bar_samps;
-	long total_new_bar_samps;
+	float old_cifra; 
+	float new_cifra;
 	long index_old_unos;
 	long index_new_unos;
 
@@ -38,12 +38,14 @@ typedef struct _fl_ritmo {
 	double fs;
 
 	void *m_outlet1;
+	void *m_outlet2;
 	void *m_clock;
+	void *m_clock2;
 
 } t_fl_ritmo;
 
-enum INLETS { I_BAR, NUM_INLETS };
-enum OUTLETS { O_OUTPUT, NUM_OUTLETS };
+enum INLETS { I_BAR, I_MSBEAT, NUM_INLETS };
+enum OUTLETS { O_OUTPUT, O_FINALFLAG, NUM_OUTLETS };
 
 static t_class *fl_ritmo_class;
 
@@ -56,7 +58,9 @@ void fl_ritmo_bar(t_fl_ritmo *x, t_symbol *msg, short argc, t_atom *argv);
 void fl_ritmo_beat_ms(t_fl_ritmo *x, double f);
 
 void fl_ritmo_out(t_fl_ritmo *x);
+void fl_ritmo_finalbang(t_fl_ritmo *x);
 void fl_ritmo_bar(t_fl_ritmo *x, t_symbol *msg, short argc, t_atom *argv);
+void fl_ritmo_loop(t_fl_ritmo *x, t_symbol *msg, short argc, t_atom *argv);
 
 void fl_ritmo_free(t_fl_ritmo *x);
 
