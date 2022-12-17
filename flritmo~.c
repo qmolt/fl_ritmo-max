@@ -134,12 +134,14 @@ void fl_ritmo_bar(t_fl_ritmo *x, t_symbol *msg, short argc, t_atom *argv)
 	float acum_beat;
 	float beat;
 	long acum_unos;
-	long unos_subdiv;
 	long subdiv;
 	long acum_notes;
 	long total_notes;
-	long n_unos;
+	long n_groups;
 	char *string_bar;
+
+	long k = 0;
+	long legatura = 0;
 
 	if (ac % 2 == 1) {
 		object_error((t_object *)x, "bar: must have even number of elements"); return;
@@ -157,10 +159,10 @@ void fl_ritmo_bar(t_fl_ritmo *x, t_symbol *msg, short argc, t_atom *argv)
 		}
 	}
 
-	n_unos = ac / 2;
+	n_groups = ac / 2;
 	acum_beat = 0.;
 	acum_notes = 0;
-	for (long i = 0; i < n_unos; i++) {
+	for (long i = 0; i < n_groups; i++) {
 		beat = (float)fabs((double)atom_getfloat(ap + 2 * i));
 		string_bar = atom_getsym(ap + 2 * i + 1)->s_name;
 		if (string_bar[0] != '<') { object_warn((t_object *)x, "bar: start list with '<'"); continue; }
@@ -173,13 +175,17 @@ void fl_ritmo_bar(t_fl_ritmo *x, t_symbol *msg, short argc, t_atom *argv)
 			index_string++;
 		}
 		subdiv = index_string - 1;
-		unos_subdiv = acum_unos;
 
-		if (unos_subdiv > 0) {
-			for (long j = 0; j < subdiv; j++) {
-				if (string_bar[j+1] == '1' && acum_notes < MAX_UNOS_SIZE) {
-					x->new_unos[acum_notes].dur_beat = beat / subdiv;
-					x->new_unos[acum_notes].inicio_beat = acum_beat + beat * j / subdiv;
+		if (acum_unos > 0) {
+			for (long j = 1; j < subdiv + 1; j++) {
+				if (string_bar[j] == '1' && acum_notes < MAX_UNOS_SIZE) {
+					
+					k = 1;
+					while (string_bar[j + k] == '-') { k++; }
+					legatura = k;
+
+					x->new_unos[acum_notes].dur_beat = (beat * legatura) / subdiv;
+					x->new_unos[acum_notes].inicio_beat = acum_beat + beat * (j-1) / subdiv;
 					acum_notes++;
 				}
 			}

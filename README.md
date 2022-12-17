@@ -6,6 +6,8 @@ A real-time external for the Windows version of Max 8 (Max/MSP). fl_ritmo is an 
 ``bar 2. <1111 3.5 <001`` means that the external will play 4 notes in a 4th division of 2.0 beats and the last note in a 3rd division of 3.5 beats. 
 This allows you to make very complex rhythms if you want to.
 
+After a '<' character '0' is a silence, '1' is a note, '-' is a tie that extends the duration of a note.
+
 The output will be the subdivision duration in milliseconds of its respective subdivision as a float.
 
 This external has the same functionality as fl_batuta when adding multiple notes to a bar. 
