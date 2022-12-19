@@ -2,30 +2,30 @@
 
 void ext_main(void *r)
 {
-	fl_ritmo_class = class_new("flritmo~", (method)fl_ritmo_new, (method)fl_ritmo_free, sizeof(t_fl_ritmo), 0, A_GIMME, 0);
+	t_class *c = class_new("flritmo~", (method)fl_ritmo_new, (method)fl_ritmo_free, sizeof(t_fl_ritmo), 0, A_GIMME, 0);
 
-	class_addmethod(fl_ritmo_class, (method)fl_ritmo_dsp64, "dsp64", A_CANT, 0);
-	class_addmethod(fl_ritmo_class, (method)fl_ritmo_float, "float", A_FLOAT, 0);
-	class_addmethod(fl_ritmo_class, (method)fl_ritmo_int, "int", A_LONG, 0);
-	class_addmethod(fl_ritmo_class, (method)fl_ritmo_assist, "assist", A_CANT, 0);
-	class_addmethod(fl_ritmo_class, (method)fl_ritmo_beat_ms, "ft1", A_FLOAT, 0);
-	class_addmethod(fl_ritmo_class, (method)fl_ritmo_bar, "bar", A_GIMME, 0);
-	class_addmethod(fl_ritmo_class, (method)fl_ritmo_loop, "loop", A_GIMME, 0);
-	class_addmethod(fl_ritmo_class, (method)fl_ritmo_bang, "bang", 0);
+	class_addmethod(c, (method)fl_ritmo_dsp64, "dsp64", A_CANT, 0);
+	class_addmethod(c, (method)fl_ritmo_float, "float", A_FLOAT, 0);
+	class_addmethod(c, (method)fl_ritmo_int, "int", A_LONG, 0);
+	class_addmethod(c, (method)fl_ritmo_assist, "assist", A_CANT, 0);
+	class_addmethod(c, (method)fl_ritmo_bar, "bar", A_GIMME, 0);
+	class_addmethod(c, (method)fl_ritmo_loop, "loop", A_GIMME, 0);
+	class_addmethod(c, (method)fl_ritmo_bang, "bang", 0);
 
-	class_dspinit(fl_ritmo_class);
-
-	class_register(CLASS_BOX, fl_ritmo_class);
+	class_dspinit(c);
+	class_register(CLASS_BOX, c);
+	fl_ritmo_class = c;
+	
+	return;
 }
 
 void *fl_ritmo_new(t_symbol *s, short argc, t_atom *argv)
 {
 	t_fl_ritmo *x = (t_fl_ritmo *)object_alloc(fl_ritmo_class);
 
-	floatin(x, 1);
-	dsp_setup((t_pxobject *)x, 0);
-	x->m_outlet2 = outlet_new((t_object *)x, NULL); //bang
-	x->m_outlet1 = outlet_new((t_object *)x, NULL); //dur
+	dsp_setup((t_pxobject *)x, 1);
+	x->m_outlet2 = outlet_new((t_object *)x, "bang"); //bang
+	x->m_outlet1 = outlet_new((t_object *)x, "float"); //dur
 	x->obj.z_misc |= Z_NO_INPLACE;
 
 	x->total_old_unos = 0;
@@ -36,15 +36,15 @@ void *fl_ritmo_new(t_symbol *s, short argc, t_atom *argv)
 	x->index_new_unos = 0;
 
 	x->samp_count = 0;
-	x->beat_ms = 500.0;
 
-	x->new_list_available = -1;
+	x->beat_ms = DFLT_BEATMS;
+
+	x->old_list_busy = 0;
 	x->onoff = 0;
 	x->loop = 0;
 
 	x->fs = sys_getsr();
 
-	x->isnewlist = 0;
 	x->index_out = 0;
 
 	x->old_unos = (fl_beat *)sysmem_newptr(MAX_UNOS_SIZE * sizeof(fl_beat));
@@ -68,8 +68,7 @@ void fl_ritmo_assist(t_fl_ritmo *x, void *b, long msg, long arg, char *dst)
 {
 	if (msg == ASSIST_INLET) {
 		switch (arg) {
-		case I_BAR: sprintf(dst, "(int) on/off; (bar) list"); break;
-		case I_MSBEAT: sprintf(dst, "(float) beat period in milliseconds"); break;
+		case I_MSBEAT: sprintf(dst, "(int) on/off; (list) bar; (sig~) beat period in milliseconds"); break;
 		}
 	}
 	else if (msg == ASSIST_OUTLET) {
@@ -94,21 +93,13 @@ void fl_ritmo_int(t_fl_ritmo *x, long n)
 {
 	if (n != n) { return; }
 
-	if (x->beat_ms > 0 && n > 0) {
+	if (n > 0) {
 		x->samp_count = 0;
 		x->index_old_unos = 0;
 		x->index_new_unos = 0;
 		x->onoff = 1;
 	}
 	else { x->onoff = 0; }
-}
-
-void fl_ritmo_beat_ms(t_fl_ritmo *x, double f)
-{
-	if (f != f) { return; }
-	if (f < 0.0) { return; }
-
-	x->beat_ms = f;
 }
 
 void fl_ritmo_loop(t_fl_ritmo *x, t_symbol *msg, short argc, t_atom *argv)
@@ -126,7 +117,7 @@ void fl_ritmo_loop(t_fl_ritmo *x, t_symbol *msg, short argc, t_atom *argv)
 
 void fl_ritmo_bar(t_fl_ritmo *x, t_symbol *msg, short argc, t_atom *argv)
 {
-	//formato: bar f(ó i) <XXXX (X={0,1}) 
+	//formato: bar f(ó i) <XXXX (X={0,1,-}) 
 	t_atom *ap = argv;
 	long ac = argc;
 
@@ -196,22 +187,26 @@ void fl_ritmo_bar(t_fl_ritmo *x, t_symbol *msg, short argc, t_atom *argv)
 	x->new_cifra = acum_beat;
 	x->total_new_unos = total_notes = acum_notes;
 
-	x->new_list_available = 1;
+	x->old_list_busy = 1;
 	for (long i = 0; i < total_notes; i++) {
 		x->old_unos[i].dur_beat = x->new_unos[i].dur_beat;
 		x->old_unos[i].inicio_beat = x->new_unos[i].inicio_beat;
 	}
 	x->old_cifra = x->new_cifra;
 	x->total_old_unos = x->total_new_unos;
-	x->new_list_available = 0;
+	x->old_list_busy = 0;
 }
 
 void fl_ritmo_out(t_fl_ritmo *x)
 {
 	float note_dur;
-	if (x->isnewlist) { note_dur = x->new_unos[x->index_out].dur_beat; }
-	else { note_dur = x->old_unos[x->index_out].dur_beat; }
-	note_dur *= (float)x->beat_ms;
+
+	if (x->old_list_busy) { 
+		note_dur = x->new_unos[x->index_out].dur_beat * x->beat_ms;
+	}
+	else {
+		note_dur = x->old_unos[x->index_out].dur_beat * x->beat_ms;
+	}
 	outlet_float(x->m_outlet1, note_dur);
 }
 
@@ -230,6 +225,8 @@ void fl_ritmo_free(t_fl_ritmo *x)
 
 void fl_ritmo_dsp64(t_fl_ritmo *x, t_object *dsp64, short *count, double samplerate, long maxvectorsize, long flags)
 {
+	x->beatmsin_connected = count[0];
+
 	if (x->fs != samplerate) {
 		x->samp_count = (long)(x->samp_count / x->fs * samplerate);
 
@@ -242,6 +239,8 @@ void fl_ritmo_dsp64(t_fl_ritmo *x, t_object *dsp64, short *count, double sampler
 void fl_ritmo_perform64(t_fl_ritmo *x, t_object *dsp64, double **inputs, long numinputs, double **outputs, long numoutputs,
 	long vectorsize, long flags, void *userparams)
 {
+	t_double *beatmsin = inputs[0];
+
 	long n = vectorsize;
 	double fs = x->fs;
 
@@ -255,26 +254,36 @@ void fl_ritmo_perform64(t_fl_ritmo *x, t_object *dsp64, double **inputs, long nu
 	long index_unos = x->index_old_unos;
 	long total_unos = x->total_old_unos;
 
-	short dirty = x->new_list_available;
+	long beat_samps;
+	long bar_samps;
+	float cifra = x->old_cifra;
 
-	long beat_samps = (long)(x->beat_ms * fs * 0.001);
-	long bar_samps = (long)(x->old_cifra * (float)beat_samps);
+	float beat_ms = 0.;
 
-	if(dirty){
+	if (x->old_list_busy) {
 		p_unos = x->new_unos;
+		cifra = x->new_cifra;
 		index_unos = x->index_new_unos;
 		total_unos = x->total_new_unos;
-		bar_samps = (long)(x->new_cifra * (float)beat_samps);
 	}
 
 	while (n--){
+		
+		if (x->beatmsin_connected) { 
+			beat_ms = (float)*beatmsin++;
+			beat_ms = MAX(MIN_BEATMS, beat_ms);
+		}
+		else { beat_ms = DFLT_BEATMS; }
+
+		beat_samps = (long)(beat_ms * fs * 0.001);
+		bar_samps = (long)(cifra * (float)beat_samps);	
 		
 		if(onoff){
 			if (index_unos < total_unos) {
 				samp_note = (long)(p_unos[index_unos].inicio_beat * (float)beat_samps);
 				if (samp_count > samp_note) {
-					x->isnewlist = 1;
 					x->index_out = index_unos;
+					x->beat_ms = beat_ms;
 					clock_delay(x->m_clock, 0);
 					index_unos++;
 				}

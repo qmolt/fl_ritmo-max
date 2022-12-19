@@ -2,11 +2,13 @@
 #define fl_ritmo_h
 
 #include "ext.h"
-#include "z_dsp.h"
 #include "ext_obex.h"
+#include "z_dsp.h"
 #include <math.h>
 
 #define MAX_UNOS_SIZE 127
+#define MIN_BEATMS 50.0f
+#define DFLT_BEATMS 500.0f //120bpm
 
 typedef struct _fl_beat {
 	float dur_beat;
@@ -25,17 +27,19 @@ typedef struct _fl_ritmo {
 	long index_old_unos;
 	long index_new_unos;
 
-	long samp_count;
-	double beat_ms;
+	float beat_ms;
 
-	short new_list_available;
+	long samp_count;
+
+	short old_list_busy;
 	short onoff;
 	short loop;
 
-	short isnewlist;
 	long index_out;
 
 	double fs;
+
+	short beatmsin_connected;
 
 	void *m_outlet1;
 	void *m_outlet2;
@@ -44,7 +48,7 @@ typedef struct _fl_ritmo {
 
 } t_fl_ritmo;
 
-enum INLETS { I_BAR, I_MSBEAT, NUM_INLETS };
+enum INLETS { I_MSBEAT, NUM_INLETS };
 enum OUTLETS { O_OUTPUT, O_FINALFLAG, NUM_OUTLETS };
 
 static t_class *fl_ritmo_class;
@@ -55,7 +59,6 @@ void fl_ritmo_bang(t_fl_ritmo *x);
 void fl_ritmo_int(t_fl_ritmo *x, long n);
 void fl_ritmo_assist(t_fl_ritmo *x, void *b, long msg, long arg, char *dst);
 void fl_ritmo_bar(t_fl_ritmo *x, t_symbol *msg, short argc, t_atom *argv);
-void fl_ritmo_beat_ms(t_fl_ritmo *x, double f);
 
 void fl_ritmo_out(t_fl_ritmo *x);
 void fl_ritmo_finalbang(t_fl_ritmo *x);
