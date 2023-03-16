@@ -10,6 +10,7 @@ void ext_main(void *r)
 	class_addmethod(c, (method)fl_ritmo_assist, "assist", A_CANT, 0);
 	class_addmethod(c, (method)fl_ritmo_bar, "bar", A_GIMME, 0);
 	class_addmethod(c, (method)fl_ritmo_loop, "loop", A_GIMME, 0);
+	class_addmethod(c, (method)fl_ritmo_beatms, "beat_ms", A_GIMME, 0);
 	class_addmethod(c, (method)fl_ritmo_bang, "bang", 0);
 
 	class_dspinit(c);
@@ -68,7 +69,7 @@ void fl_ritmo_assist(t_fl_ritmo *x, void *b, long msg, long arg, char *dst)
 {
 	if (msg == ASSIST_INLET) {
 		switch (arg) {
-		case I_MSBEAT: sprintf(dst, "(int) on/off; (list) bar; (sig~) beat period in milliseconds"); break;
+		case I_MSBEAT: sprintf(dst, "(int)on/off; (messages)bar, beatms; (sig~)beat period in milliseconds"); break;
 		}
 	}
 	else if (msg == ASSIST_OUTLET) {
@@ -113,6 +114,21 @@ void fl_ritmo_loop(t_fl_ritmo *x, t_symbol *msg, short argc, t_atom *argv)
 	
 	loop = (short)atom_getlong(ap);
 	x->loop = loop ? 1 : 0;
+}
+
+void fl_ritmo_beatms(t_fl_ritmo *x, t_symbol *msg, short argc, t_atom *argv)
+{
+	t_atom *ap = argv;
+	long ac = argc;
+	float beat_ms;
+
+	if (ac != 1) { object_error((t_object *)x, "beat_ms: only 1 argument"); return; }
+	if (atom_gettype(ap) != A_FLOAT || atom_gettype(ap) != A_LONG) { object_error((t_object *)x, "beat_ms: argument must be a number"); return; }
+
+	beat_ms = (float)atom_getfloat(ap);
+	if (beat_ms < 10.0) { object_error((t_object *)x, "beat_ms: argument must be a positive number greater than 10"); return; }
+
+	x->beat_ms = beat_ms;
 }
 
 void fl_ritmo_bar(t_fl_ritmo *x, t_symbol *msg, short argc, t_atom *argv)

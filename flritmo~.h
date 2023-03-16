@@ -64,6 +64,7 @@ void fl_ritmo_out(t_fl_ritmo *x);
 void fl_ritmo_finalbang(t_fl_ritmo *x);
 void fl_ritmo_bar(t_fl_ritmo *x, t_symbol *msg, short argc, t_atom *argv);
 void fl_ritmo_loop(t_fl_ritmo *x, t_symbol *msg, short argc, t_atom *argv);
+void fl_ritmo_beatms(t_fl_ritmo *x, t_symbol *msg, short argc, t_atom *argv);
 
 void fl_ritmo_free(t_fl_ritmo *x);
 
